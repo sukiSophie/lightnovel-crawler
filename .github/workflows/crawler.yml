@@ -1,0 +1,57 @@
+name: Run Crawler
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: '输入小说目录页网址(多个网址请用逗号分隔)'
+        required: true
+        type: string
+
+jobs:
+  crawl:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium requests
+    
+    - name: Setup Edge
+      uses: browser-actions/setup-edge@v1
+    
+    - name: Setup MSEdgeDriver
+      uses: browser-actions/setup-msedgedriver@v1
+      with:
+        version: latest
+    
+    - name: Run crawler
+      run: |
+        $urls = "${{ github.event.inputs.urls }}".Split(',') | ForEach-Object { $_.Trim() }
+        foreach ($url in $urls) {
+          echo $url | python src/clawler.py
+          echo "-1" | python src/clawler.py
+        }
+      shell: pwsh
+    
+    - name: Upload novels
+      uses: actions/upload-artifact@v4
+      with:
+        name: novels
+        path: '*.txt'
+        
+    - name: Commit changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add novel/*.txt
+        git commit -m "Add new novels" || echo "No changes to commit"
+        git push
