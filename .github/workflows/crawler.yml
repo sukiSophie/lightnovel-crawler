@@ -28,10 +28,13 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
 
+    - name: Install Python dependencies
+      run: pip install -r src/requirements.txt
+
     - name: Setup Edge
       uses: browser-actions/setup-edge@latest
       with:
-        edge-version: "133.0.3065.82"
+        edge-version: stable
 
     - name: Download Edge WebDriver
       shell: powershell
@@ -46,10 +49,9 @@ jobs:
         
         # 尝试从多个可能的URL下载
         $urls = @(
-          "https://msedgedriver.azureedge.net/$edgeVersion/edgedriver_win64.zip",
-          "https://msedgedriver.azureedge.net/$majorVersion.0.0.0/edgedriver_win64.zip",
-          "https://msedgedriver.azureedge.net/133.0.3065.82/edgedriver_win64.zip",
-          "https://msedgedriver.azureedge.net/133.0.0.0/edgedriver_win64.zip"
+          
+          "https://msedgedriver.azureedge.net/133.0.3065.92/edgedriver_win64.zip"
+
         )
         
         $downloaded = $false
@@ -80,10 +82,6 @@ jobs:
         # Add the directory to PATH
         echo "$env:GITHUB_WORKSPACE" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install selenium requests
     
     - name: Create novel directory
       run: mkdir -p novel
@@ -92,8 +90,10 @@ jobs:
       env:
         PYTHONIOENCODING: utf8
       run: |
-        $urls = "${{ github.event.inputs.urls }}"
-        python src/clawler.py "$urls"
+        $urls = "${{ github.event.inputs.urls }}".Split(' ') | ForEach-Object { $_.Trim() }
+        foreach ($url in $urls) {
+          echo $url | python src/clawler.py
+        }
       shell: pwsh
     
     - name: Upload novels
