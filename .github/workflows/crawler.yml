@@ -89,6 +89,8 @@ jobs:
       run: mkdir -p novel
       
     - name: Run crawler
+      env:
+        PYTHONIOENCODING: utf8
       run: |
         $urls = "${{ github.event.inputs.urls }}".Split(' ') | ForEach-Object { $_.Trim() }
         foreach ($url in $urls) {
