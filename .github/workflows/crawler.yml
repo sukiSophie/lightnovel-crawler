@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       urls:
-        description: '输入小说目录页网址(多个网址请用逗号分隔)'
+        description: '输入小说目录页网址(多个网址请用空格分隔)'
         required: true
         type: string
 
@@ -19,29 +19,67 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        cache: 'pip'
-    
-    - name: Setup Edge
-      uses: browser-actions/setup-edge@v1
-      with:
-        version: 134.0.3124.85
-    
-    - name: Setup MSEdgeDriver
-      uses: browser-actions/setup-msedgedriver@v1
-      with:
-        version: 134.0.3124.85
-    
-    - name: Cache Edge and MSEdgeDriver
+
+    - name: Cache Python dependencies
       uses: actions/cache@v4
-      id: cache
       with:
-        path: |
-          C:\Program Files (x86)\Microsoft\Edge
-          C:\SeleniumWebDrivers
-        key: ${{ runner.os }}-edge-${{ hashFiles('**/*.yml') }}
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('src/requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-edge-
-    
+          ${{ runner.os }}-pip-
+
+    - name: Setup Edge
+      uses: browser-actions/setup-edge@latest
+      with:
+        edge-version: stable
+
+    - name: Download Edge WebDriver
+      shell: powershell
+      run: |
+        $edgeVersion = (Get-Item "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe").VersionInfo.ProductVersion
+        $majorVersion = $edgeVersion.Split(".")[0]
+        Write-Host "Edge version: $edgeVersion (Major: $majorVersion)"
+        
+        # 创建存放驱动的目录
+        $driverDir = "$env:GITHUB_WORKSPACE\webdriver"
+        mkdir -Force $driverDir
+        
+        # 尝试从多个可能的URL下载
+        $urls = @(
+          "https://msedgedriver.azureedge.net/$edgeVersion/edgedriver_win64.zip",
+          "https://msedgedriver.azureedge.net/$majorVersion.0.0.0/edgedriver_win64.zip",
+          "https://msedgedriver.azureedge.net/133.0.3065.82/edgedriver_win64.zip",
+          "https://msedgedriver.azureedge.net/133.0.0.0/edgedriver_win64.zip"
+        )
+        
+        $downloaded = $false
+        foreach ($url in $urls) {
+          try {
+            Write-Host "Trying to download from: $url"
+            Invoke-WebRequest -Uri $url -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
+            $downloaded = $true
+            Write-Host "Downloaded successfully from: $url"
+            break
+          } catch {
+            Write-Host "Failed to download from: $url"
+            Write-Host $_.Exception.Message
+          }
+        }
+        
+        if (-not $downloaded) {
+          Write-Host "Failed to download WebDriver from all URLs, trying manual installation..."
+          choco install selenium-chromium-edge-driver -y
+          Write-Host "WebDriver installed using Chocolatey"
+        } else {
+          # 解压并安装
+          Expand-Archive -Path "$driverDir\msedgedriver.zip" -DestinationPath $driverDir -Force
+          Copy-Item -Path "$driverDir\msedgedriver.exe" -Destination "$env:GITHUB_WORKSPACE\msedgedriver.exe" -Force
+          Write-Host "Edge WebDriver installed to: $env:GITHUB_WORKSPACE\msedgedriver.exe"
+        }
+        
+        # Add the directory to PATH
+        echo "$env:GITHUB_WORKSPACE" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
