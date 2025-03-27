@@ -87,9 +87,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install selenium requests
     
-    - name: Create novel directory
-      run: mkdir -p novel
-      
     - name: Run crawler
       env:
         PYTHONIOENCODING: utf8
