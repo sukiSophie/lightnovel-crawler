@@ -15,12 +15,8 @@ def process_text(html_content):
     return processed
 
 #输入小说的目录页网址
-urls = []
-while True:
-    URL = input("请输入该小说的目录页网址:")
-    if URL == "-1":
-        break
-    urls.append(URL)
+URL = input("请输入小说的目录页网址(多个网址请用空格分隔):")
+urls = [url.strip() for url in URL.split()]
 
 #驱动配置
 driver_file_path = 'msedgedriver.exe'

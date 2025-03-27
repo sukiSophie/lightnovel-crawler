@@ -21,8 +21,19 @@ jobs:
         python-version: '3.12'
         cache: 'pip'
     
+    - name: Setup Edge
+      uses: browser-actions/setup-edge@v1
+      with:
+        version: 134.0.3124.85
+    
+    - name: Setup MSEdgeDriver
+      uses: browser-actions/setup-msedgedriver@v1
+      with:
+        version: 134.0.3124.85
+    
     - name: Cache Edge and MSEdgeDriver
       uses: actions/cache@v4
+      id: cache
       with:
         path: |
           C:\Program Files (x86)\Microsoft\Edge
@@ -36,22 +47,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install selenium requests
     
-    - name: Setup Edge
-      uses: browser-actions/setup-edge@v1
-      if: steps.cache.outputs.cache-hit != 'true'
-    
-    - name: Setup MSEdgeDriver
-      uses: browser-actions/setup-msedgedriver@v1
-      if: steps.cache.outputs.cache-hit != 'true'
-      with:
-        version: latest
-    
     - name: Create novel directory
       run: mkdir -p novel
       
     - name: Run crawler
       run: |
-        $urls = "${{ github.event.inputs.urls }}".Split(',') | ForEach-Object { $_.Trim() }
+        $urls = "${{ github.event.inputs.urls }}".Split(' ') | ForEach-Object { $_.Trim() }
         foreach ($url in $urls) {
           echo $url | python src/clawler.py
           echo "-1" | python src/clawler.py
