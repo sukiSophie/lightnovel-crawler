@@ -36,7 +36,7 @@ for url in urls:
     book_title = driver.find_element(By.XPATH, book_title_xpath).text
     #没有可爬取内容时结束任务
     try:
-        with open(book_title + '.txt', "w+", encoding='utf-8') as f:
+        with open('novel/' + book_title + '.txt', "w+", encoding='utf-8') as f:
             #进入轻小说开始页
             first_part_xpath = '/html/body/div[2]/div[3]/div[2]/div[2]/div/ul/li[1]/a'
             begin_button = driver.find_element(By.XPATH, first_part_xpath)

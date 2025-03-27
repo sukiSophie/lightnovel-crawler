@@ -19,6 +19,17 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Cache Edge and MSEdgeDriver
+      uses: actions/cache@v4
+      with:
+        path: |
+          C:\Program Files (x86)\Microsoft\Edge
+          C:\SeleniumWebDrivers
+        key: ${{ runner.os }}-edge-${{ hashFiles('**/*.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-edge-
     
     - name: Install dependencies
       run: |
@@ -27,12 +38,17 @@ jobs:
     
     - name: Setup Edge
       uses: browser-actions/setup-edge@v1
+      if: steps.cache.outputs.cache-hit != 'true'
     
     - name: Setup MSEdgeDriver
       uses: browser-actions/setup-msedgedriver@v1
+      if: steps.cache.outputs.cache-hit != 'true'
       with:
         version: latest
     
+    - name: Create novel directory
+      run: mkdir -p novel
+      
     - name: Run crawler
       run: |
         $urls = "${{ github.event.inputs.urls }}".Split(',') | ForEach-Object { $_.Trim() }
@@ -46,7 +62,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: novels
-        path: '*.txt'
+        path: 'novel/*.txt'
         
     - name: Commit changes
       run: |
