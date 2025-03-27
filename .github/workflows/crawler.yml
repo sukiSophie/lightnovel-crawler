@@ -31,7 +31,7 @@ jobs:
     - name: Setup Edge
       uses: browser-actions/setup-edge@latest
       with:
-        edge-version: stable
+        edge-version: "134.0.3124.85"
 
     - name: Download Edge WebDriver
       shell: powershell
@@ -92,11 +92,8 @@ jobs:
       env:
         PYTHONIOENCODING: utf8
       run: |
-        $urls = "${{ github.event.inputs.urls }}".Split(' ') | ForEach-Object { $_.Trim() }
-        foreach ($url in $urls) {
-          echo $url | python src/clawler.py
-          echo "-1" | python src/clawler.py
-        }
+        $urls = "${{ github.event.inputs.urls }}"
+        python src/clawler.py "$urls"
       shell: pwsh
     
     - name: Upload novels
