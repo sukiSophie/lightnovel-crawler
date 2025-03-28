@@ -14,6 +14,16 @@ def process_text(html_content):
     processed = re.sub(r'\n+', '\n', processed).strip()
     return processed
 
+#处理文件名中的特殊字符
+def sanitize_filename(filename):
+    # 替换Windows文件系统不允许的字符
+    invalid_chars = r'[\\/:*?"<>|]'
+    # 替换为下划线
+    sanitized = re.sub(invalid_chars, '_', filename)
+    # 移除前后的空白字符
+    sanitized = sanitized.strip()
+    return sanitized
+
 #输入小说的目录页网址
 URL = input("请输入小说的目录页网址(多个网址请用空格分隔):")
 urls = [url.strip() for url in URL.split()]
@@ -30,9 +40,11 @@ for url in urls:
     #爬取标题
     book_title_xpath = '/html/body/div[2]/div[3]/div[1]/h1'
     book_title = driver.find_element(By.XPATH, book_title_xpath).text
+    #处理文件名中的特殊字符
+    safe_title = sanitize_filename(book_title)
     #没有可爬取内容时结束任务
     try:
-        with open('novel/' + book_title + '.txt', "w+", encoding='utf-8') as f:
+        with open('novel/' + safe_title + '.txt', "w+", encoding='utf-8') as f:
             #进入轻小说开始页
             first_part_xpath = '/html/body/div[2]/div[3]/div[2]/div[2]/div/ul/li[1]/a'
             begin_button = driver.find_element(By.XPATH, first_part_xpath)
