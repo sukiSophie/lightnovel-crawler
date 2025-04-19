@@ -35,53 +35,31 @@ jobs:
     - name: Setup Edge
       uses: browser-actions/setup-edge@v2
       with:
-        edge-version: '133.0.1774.57'  # 替换为你的目标版本号
+        edge-version: '133.0.3065.59'  # 设置为你指定的目标版本
         edge-platform: 'win64'        # 明确指定 Windows 平台
 
     - name: Download Edge WebDriver
       shell: powershell
       run: |
-        $edgeVersion = (Get-Item "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe").VersionInfo.ProductVersion
-        $majorVersion = $edgeVersion.Split(".")[0]
-        Write-Host "Edge version: $edgeVersion (Major: $majorVersion)"
-        
+        $edgeVersion = '133.0.3065.59'
+        Write-Host "Edge version: $edgeVersion"
+          
         # 创建存放驱动的目录
         $driverDir = "$env:GITHUB_WORKSPACE\webdriver"
         mkdir -Force $driverDir
-        
-        # 尝试从多个可能的URL下载
-        $urls = @(
           
-          "https://msedgedriver.azureedge.net/133.0.3065.92/edgedriver_win64.zip"
-
-        )
-        
-        $downloaded = $false
-        foreach ($url in $urls) {
-          try {
-            Write-Host "Trying to download from: $url"
-            Invoke-WebRequest -Uri $url -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
-            $downloaded = $true
-            Write-Host "Downloaded successfully from: $url"
-            break
-          } catch {
-            Write-Host "Failed to download from: $url"
-            Write-Host $_.Exception.Message
-          }
-        }
-        
-        if (-not $downloaded) {
-          Write-Host "Failed to download WebDriver from all URLs, trying manual installation..."
-          choco install selenium-chromium-edge-driver -y
-          Write-Host "WebDriver installed using Chocolatey"
-        } else {
+          # 下载指定版本的 WebDriver
+        $url = "https://msedgedriver.azureedge.net/133.0.3065.59/edgedriver_win64.zip"
+        Write-Host "Trying to download from: $url"
+        Invoke-WebRequest -Uri $url -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
+        Write-Host "Downloaded successfully from: $url"
+          
           # 解压并安装
-          Expand-Archive -Path "$driverDir\msedgedriver.zip" -DestinationPath $driverDir -Force
-          Copy-Item -Path "$driverDir\msedgedriver.exe" -Destination "$env:GITHUB_WORKSPACE\msedgedriver.exe" -Force
-          Write-Host "Edge WebDriver installed to: $env:GITHUB_WORKSPACE\msedgedriver.exe"
-        }
-        
-        # Add the directory to PATH
+        Expand-Archive -Path "$driverDir\msedgedriver.zip" -DestinationPath $driverDir -Force
+        Copy-Item -Path "$driverDir\msedgedriver.exe" -Destination "$env:GITHUB_WORKSPACE\msedgedriver.exe" -Force
+        Write-Host "Edge WebDriver installed to: $env:GITHUB_WORKSPACE\msedgedriver.exe"
+          
+          # Add the directory to PATH
         echo "$env:GITHUB_WORKSPACE" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Install dependencies
