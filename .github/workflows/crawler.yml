@@ -31,10 +31,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
 
+
     - name: Setup Edge
-      uses: browser-actions/setup-edge@latest
+      uses: browser-actions/setup-edge@v2
       with:
-        edge-version: stable
+        edge-version: '133.0.1774.57'  # 替换为你的目标版本号
+        edge-platform: 'win64'        # 明确指定 Windows 平台
 
     - name: Download Edge WebDriver
       shell: powershell
