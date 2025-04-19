@@ -47,33 +47,34 @@ jobs:
         $driverDir = "$env:GITHUB_WORKSPACE\webdriver"
         mkdir -Force $driverDir
         
-        # 尝试从多个可能的URL下载
-        $urls = @(
+        # 动态获取与当前Edge版本匹配的WebDriver
+        try {
+          # 获取WebDriver下载页面
+          $response = Invoke-WebRequest -Uri "https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/" -UseBasicParsing
           
-          "https://msedgedriver.azureedge.net/133.0.3065.92/edgedriver_win64.zip"
-
-        )
-        
-        $downloaded = $false
-        foreach ($url in $urls) {
-          try {
-            Write-Host "Trying to download from: $url"
-            Invoke-WebRequest -Uri $url -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
-            $downloaded = $true
-            Write-Host "Downloaded successfully from: $url"
-            break
-          } catch {
-            Write-Host "Failed to download from: $url"
-            Write-Host $_.Exception.Message
+          # 从页面内容中提取下载链接
+          $downloadLink = $response.Links | Where-Object { 
+            $_.href -like "https://msedgedriver.azureedge.net/*" -and 
+            $_.href -like "*win64.zip" -and 
+            $_.href -like "*$majorVersion.*" 
+          } | Select-Object -First 1 -ExpandProperty href
+          
+          if ($downloadLink) {
+            Write-Host "Found matching WebDriver download link: $downloadLink"
+            Invoke-WebRequest -Uri $downloadLink -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
+            Write-Host "Downloaded successfully"
+          } else {
+            throw "No matching WebDriver found on the download page"
           }
-        }
-        
-        if (-not $downloaded) {
-          Write-Host "Failed to download WebDriver from all URLs, trying manual installation..."
+        } catch {
+          Write-Host "Failed to download WebDriver dynamically: $_"
+          Write-Host "Falling back to Chocolatey installation..."
           choco install selenium-chromium-edge-driver -y
           Write-Host "WebDriver installed using Chocolatey"
-        } else {
-          # 解压并安装
+        }
+        
+        # 如果下载了zip文件，解压并安装
+        if (Test-Path "$driverDir\msedgedriver.zip") {
           Expand-Archive -Path "$driverDir\msedgedriver.zip" -DestinationPath $driverDir -Force
           Copy-Item -Path "$driverDir\msedgedriver.exe" -Destination "$env:GITHUB_WORKSPACE\msedgedriver.exe" -Force
           Write-Host "Edge WebDriver installed to: $env:GITHUB_WORKSPACE\msedgedriver.exe"
