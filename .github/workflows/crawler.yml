@@ -14,6 +14,8 @@ permissions:
 jobs:
   crawl:
     runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: utf8
     
     steps:
     - uses: actions/checkout@v4
@@ -26,17 +28,27 @@ jobs:
     - name: Cache Python dependencies
       uses: actions/cache@v4
       with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-pip-${{ hashFiles('src/requirements.txt') }}
+        path: |
+          ~\AppData\Local\pip\Cache
+          ~\.cache\selenium
+        key: ${{ runner.os }}-dependencies-${{ hashFiles('src/clawler.py') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-dependencies-
 
     - name: Setup Edge
       uses: browser-actions/setup-edge@latest
       with:
         edge-version: stable
 
+    - name: Cache Edge WebDriver
+      id: cache-webdriver
+      uses: actions/cache@v4
+      with:
+        path: msedgedriver.exe
+        key: ${{ runner.os }}-msedgedriver-${{ hashFiles('msedgedriver.exe') }}
+
     - name: Download Edge WebDriver
+      if: steps.cache-webdriver.outputs.cache-hit != 'true'
       shell: powershell
       run: |
         $edgeVersion = (Get-Item "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe").VersionInfo.ProductVersion
@@ -47,28 +59,14 @@ jobs:
         $driverDir = "$env:GITHUB_WORKSPACE\webdriver"
         mkdir -Force $driverDir
         
-        # 动态获取与当前Edge版本匹配的WebDriver
+        # 使用更简单的方式下载WebDriver
         try {
-          # 获取WebDriver下载页面
-          $response = Invoke-WebRequest -Uri "https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/" -UseBasicParsing
-          
-          # 从页面内容中提取下载链接
-          $downloadLink = $response.Links | Where-Object { 
-            $_.href -like "https://msedgedriver.azureedge.net/*" -and 
-            $_.href -like "*win64.zip" -and 
-            $_.href -like "*$majorVersion.*" 
-          } | Select-Object -First 1 -ExpandProperty href
-          
-          if ($downloadLink) {
-            Write-Host "Found matching WebDriver download link: $downloadLink"
-            Invoke-WebRequest -Uri $downloadLink -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
-            Write-Host "Downloaded successfully"
-          } else {
-            throw "No matching WebDriver found on the download page"
-          }
+          $downloadUrl = "https://msedgedriver.azureedge.net/$edgeVersion/edgedriver_win64.zip"
+          Write-Host "Downloading WebDriver from: $downloadUrl"
+          Invoke-WebRequest -Uri $downloadUrl -OutFile "$driverDir\msedgedriver.zip" -ErrorAction Stop
+          Write-Host "Downloaded successfully"
         } catch {
-          Write-Host "Failed to download WebDriver dynamically: $_"
-          Write-Host "Falling back to Chocolatey installation..."
+          Write-Host "Failed to download specific version, trying alternative method"
           choco install selenium-chromium-edge-driver -y
           Write-Host "WebDriver installed using Chocolatey"
         }
@@ -83,14 +81,20 @@ jobs:
         # Add the directory to PATH
         echo "$env:GITHUB_WORKSPACE" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Create requirements.txt
+      run: |
+        @"
+        selenium==4.29.0
+        requests==2.32.3
+        "@ | Out-File -FilePath "$env:GITHUB_WORKSPACE\requirements.txt" -Encoding utf8
+      shell: pwsh
+      
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install selenium requests
+        pip install -r requirements.txt --no-cache-dir
     
     - name: Run crawler
-      env:
-        PYTHONIOENCODING: utf8
       run: |
         $urls = "${{ github.event.inputs.urls }}".Split(' ') | ForEach-Object { $_.Trim() }
         foreach ($url in $urls) {
